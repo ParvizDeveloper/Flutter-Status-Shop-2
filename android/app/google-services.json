@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1053414525131",
+    "project_id": "status-shop-533d8",
+    "storage_bucket": "status-shop-533d8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1053414525131:android:28c5bbe8564b654516b34e",
+        "android_client_info": {
+          "package_name": "com.statusshop.status_shop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZsIGGfXVv8hoTGis903dr_wDfuT_dP_o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
