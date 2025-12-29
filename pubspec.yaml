@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # firebase removed
+  url_launcher: ^6.2.6
 
   connectivity_plus: ^7.0.0
   path_provider: ^2.1.4

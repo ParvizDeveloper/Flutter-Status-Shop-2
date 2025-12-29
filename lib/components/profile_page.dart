@@ -51,7 +51,6 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       _uid = await ApiService.uid();
 
-      // 🔴 UID отсутствует → logout
       if (_uid == null) {
         await _forceLogout();
         return;
@@ -59,7 +58,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       final data = await ApiService.getUser(_uid!);
 
-      // 🔴 backend вернул null / пусто → сессия мертва
       if (data == null || data.isEmpty) {
         await _forceLogout();
         return;
@@ -143,13 +141,16 @@ class _ProfilePageState extends State<ProfilePage> {
             centerTitle: true,
             title: Text(
               tr(context, 'profile'),
-              style:
-                  const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           body: _loading
               ? const Center(
-                  child: CircularProgressIndicator(color: redColor))
+                  child: CircularProgressIndicator(color: redColor),
+                )
               : _content(context),
         );
       },
@@ -162,7 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // TOP
+        // ================= TOP =================
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -187,11 +188,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           ? _nameController.text
                           : tr(context, 'user'),
                       style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w600),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    Text(_email,
-                        style: const TextStyle(color: Colors.grey)),
+                    Text(
+                      _email,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
                   ],
                 ),
               ),
@@ -230,14 +235,13 @@ class _ProfilePageState extends State<ProfilePage> {
         if (_editing)
           _saving
               ? const Center(
-                  child:
-                      CircularProgressIndicator(color: redColor))
+                  child: CircularProgressIndicator(color: redColor),
+                )
               : ElevatedButton(
                   onPressed: _saveChanges,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: redColor,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: Text(tr(context, 'save')),
                 ),
@@ -246,21 +250,34 @@ class _ProfilePageState extends State<ProfilePage> {
 
         _sectionTitle(tr(context, 'settings')),
 
-        _settingItem(Icons.shopping_bag_outlined,
-            tr(context, 'my_orders'),
-            onTap: () =>
-                Navigator.pushNamed(context, '/my_orders')),
+        _settingItem(
+          Icons.shopping_bag_outlined,
+          tr(context, 'my_orders'),
+          onTap: () => Navigator.pushNamed(context, '/my_orders'),
+        ),
 
-        _settingItem(Icons.rate_review_outlined,
-            tr(context, 'my_reviews')),
-        _settingItem(Icons.lock_outline,
-            tr(context, 'privacy')),
+        // ✅ НАШИ ФИЛИАЛЫ
+        _settingItem(
+          Icons.location_on_outlined,
+          tr(context, 'locations'),
+          onTap: () => Navigator.pushNamed(context, '/locations'),
+        ),
 
-        _settingItem(Icons.language_outlined,
-            tr(context, 'language'),
-            onTap: _showLanguageModal),
+        _settingItem(
+          Icons.lock_outline,
+          tr(context, 'privacy'),
+        ),
 
-        _settingItem(Icons.help_outline, tr(context, 'help')),
+        _settingItem(
+          Icons.language_outlined,
+          tr(context, 'language'),
+          onTap: _showLanguageModal,
+        ),
+
+        _settingItem(
+          Icons.help_outline,
+          tr(context, 'help'),
+        ),
       ],
     );
   }
@@ -271,29 +288,31 @@ class _ProfilePageState extends State<ProfilePage> {
     showModalBottomSheet(
       context: context,
       builder: (_) {
-        final lp =
-            Provider.of<LanguageProvider>(context, listen: false);
+        final lp = Provider.of<LanguageProvider>(context, listen: false);
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-                title: const Text('Русский'),
-                onTap: () {
-                  lp.setLocale('ru');
-                  Navigator.pop(context);
-                }),
+              title: const Text('Русский'),
+              onTap: () {
+                lp.setLocale('ru');
+                Navigator.pop(context);
+              },
+            ),
             ListTile(
-                title: const Text("O'zbekcha"),
-                onTap: () {
-                  lp.setLocale('uz');
-                  Navigator.pop(context);
-                }),
+              title: const Text("O'zbekcha"),
+              onTap: () {
+                lp.setLocale('uz');
+                Navigator.pop(context);
+              },
+            ),
             ListTile(
-                title: const Text('English'),
-                onTap: () {
-                  lp.setLocale('en');
-                  Navigator.pop(context);
-                }),
+              title: const Text('English'),
+              onTap: () {
+                lp.setLocale('en');
+                Navigator.pop(context);
+              },
+            ),
             const SizedBox(height: 12),
           ],
         );
@@ -303,9 +322,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _sectionTitle(String title) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(title,
-            style: const TextStyle(
-                fontSize: 17, fontWeight: FontWeight.bold)),
+        child: Text(
+          title,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+        ),
       );
 
   Widget _editableField(
@@ -314,36 +334,35 @@ class _ProfilePageState extends State<ProfilePage> {
       title: Text(label),
       subtitle: _editing
           ? TextField(controller: controller)
-          : Text(controller.text.isNotEmpty
-              ? controller.text
-              : '—'),
+          : Text(controller.text.isNotEmpty ? controller.text : '—'),
       trailing: !_editing
           ? IconButton(
               icon: const Icon(Icons.edit_outlined,
                   color: Colors.redAccent),
-              onPressed: () =>
-                  setState(() => _editing = true),
+              onPressed: () => setState(() => _editing = true),
             )
           : null,
     );
   }
 
-  Widget _readonlyField(String label, String value) =>
-      ListTile(
-          title: Text(label),
-          subtitle: Text(value),
-          enabled: false);
+  Widget _readonlyField(String label, String value) => ListTile(
+        title: Text(label),
+        subtitle: Text(value),
+        enabled: false,
+      );
 
-  Widget _settingItem(IconData icon, String title,
-          {VoidCallback? onTap}) =>
+  Widget _settingItem(
+    IconData icon,
+    String title, {
+    VoidCallback? onTap,
+  }) =>
       Card(
         elevation: 0,
         margin: const EdgeInsets.only(bottom: 8),
         child: ListTile(
           leading: Icon(icon, color: Colors.redAccent),
           title: Text(title),
-          trailing:
-              const Icon(Icons.arrow_forward_ios, size: 16),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: onTap,
         ),
       );

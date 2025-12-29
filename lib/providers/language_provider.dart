@@ -32,6 +32,8 @@ class LanguageProvider extends ChangeNotifier {
     'my_orders': {'ru': 'Мои заказы', 'uz': 'Buyurtmalarim', 'en': 'My orders'},
     'my_reviews': {'ru': 'Мои отзывы', 'uz': 'Sharhlarim', 'en': 'My reviews'},
     'privacy': {'ru': 'Конфиденциальность', 'uz': 'Maxfiylik', 'en': 'Privacy'},
+    'locations': {'ru': 'Наши филиалы', 'uz': 'Filiallarimiz', 'en': 'Our locations'},
+    'call': { 'ru': 'Позвонить', 'uz': 'Qo‘ng‘iroq qilish', 'en': 'Call'},
   };
 
   /// Получение перевода по ключу
