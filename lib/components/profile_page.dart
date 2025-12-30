@@ -43,23 +43,23 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  // ================= AUTH-SAFE LOAD =================
+  // ================= LOAD PROFILE =================
 
   Future<void> _loadUserData() async {
-    if (!_loading) return;
+    setState(() => _loading = true);
 
     try {
       _uid = await ApiService.uid();
 
       if (_uid == null) {
-        await _forceLogout();
+        setState(() => _loading = false);
         return;
       }
 
       final data = await ApiService.getUser(_uid!);
 
       if (data == null || data.isEmpty) {
-        await _forceLogout();
+        setState(() => _loading = false);
         return;
       }
 
@@ -75,12 +75,13 @@ class _ProfilePageState extends State<ProfilePage> {
         _loading = false;
       });
     } catch (e) {
-      debugPrint('❌ Profile fatal auth error: $e');
-      await _forceLogout();
+      debugPrint('⚠️ Profile load error: $e');
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
   }
 
-  // ================= FORCE LOGOUT =================
+  // ================= LOGOUT (MANUAL ONLY) =================
 
   Future<void> _forceLogout() async {
     await ApiService.logout();
@@ -109,20 +110,22 @@ class _ProfilePageState extends State<ProfilePage> {
       'city': _cityController.text.trim(),
     });
 
+    if (!mounted) return;
+
+    setState(() => _saving = false);
+
     if (!ok) {
-      await _forceLogout();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(tr(context, 'save_failed'))),
+      );
       return;
     }
 
-    if (!mounted) return;
+    setState(() => _editing = false);
 
-    setState(() {
-      _editing = false;
-      _saving = false;
-    });
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(tr(context, 'saved'))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(tr(context, 'saved'))),
+    );
   }
 
   // ================= UI =================
@@ -163,7 +166,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // ================= TOP =================
+        // TOP
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -178,7 +181,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     AssetImage('assets/images/profile_avatar.png'),
               ),
               const SizedBox(width: 16),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,14 +195,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      _email,
-                      style: const TextStyle(color: Colors.grey),
-                    ),
+                    Text(_email,
+                        style: const TextStyle(color: Colors.grey)),
                   ],
                 ),
               ),
-
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.grey),
                 onPressed: _forceLogout,
@@ -256,17 +255,13 @@ class _ProfilePageState extends State<ProfilePage> {
           onTap: () => Navigator.pushNamed(context, '/my_orders'),
         ),
 
-        // ✅ НАШИ ФИЛИАЛЫ
         _settingItem(
           Icons.location_on_outlined,
           tr(context, 'locations'),
           onTap: () => Navigator.pushNamed(context, '/locations'),
         ),
 
-        _settingItem(
-          Icons.lock_outline,
-          tr(context, 'privacy'),
-        ),
+        _settingItem(Icons.lock_outline, tr(context, 'privacy')),
 
         _settingItem(
           Icons.language_outlined,
@@ -277,12 +272,13 @@ class _ProfilePageState extends State<ProfilePage> {
         _settingItem(
           Icons.help_outline,
           tr(context, 'help'),
+          onTap: () => Navigator.pushNamed(context, '/chat'),
         ),
       ],
     );
   }
 
-  // ================= UI HELPERS =================
+  // ================= HELPERS =================
 
   void _showLanguageModal() {
     showModalBottomSheet(

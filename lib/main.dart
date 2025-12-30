@@ -16,6 +16,7 @@ import 'pages/product_page.dart';
 import 'pages/my_orders.dart';
 import 'base/translation.dart';
 import 'pages/locations_page.dart';
+import 'pages/chat_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +53,7 @@ class StatusShopApp extends StatelessWidget {
         '/product': (_) => const ProductPage(product: {}),
         '/my_orders': (_) => const MyOrdersPage(),
         '/locations': (_) => const LocationsPage(),
+        '/chat': (_) => const ChatPage(),
       },
     );
   }
