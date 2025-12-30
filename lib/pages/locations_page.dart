@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import '../services/api_service.dart';
 import '../providers/language_provider.dart';
 import '../base/translation.dart';
 
@@ -11,20 +11,9 @@ class LocationsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const redColor = Color(0xFFE53935);
-
-    /// 🔒 ВРЕМЕННО: фиксированный филиал
-    final locations = [
-      {
-        'name': 'Status Shop – Центральный офис',
-        'address': 'ул. Амира Темура, 45',
-        'city': 'Ташкент',
-        'phone': '+998901234567',
-        'card_number': '8600 1234 5678 9012',
-      },
-    ];
-
     return Consumer<LanguageProvider>(
       builder: (context, lp, _) {
+        String lang = Provider.of<LanguageProvider>(context, listen: false).localeCode;
         return Scaffold(
           backgroundColor: Colors.grey.shade100,
           appBar: AppBar(
@@ -40,12 +29,28 @@ class LocationsPage extends StatelessWidget {
             ),
             iconTheme: const IconThemeData(color: Colors.black),
           ),
-          body: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: locations.length,
-            itemBuilder: (context, index) {
-              final item = locations[index];
-              return _locationCard(context, item);
+          body: FutureBuilder<List<Map<String, dynamic>>>(
+            future: ApiService.getBranches(),
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final locations = snap.data ?? [];
+              if (locations.isEmpty) {
+                return Center(
+                  child: Text(
+                    tr(context, 'no_branches'),
+                  ),
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: locations.length,
+                itemBuilder: (context, index) {
+                  final item = locations[index];
+                  return _locationCard(context, item, lang);
+                },
+              );
             },
           ),
         );
@@ -55,7 +60,37 @@ class LocationsPage extends StatelessWidget {
 
   // ================= CARD =================
 
-  Widget _locationCard(BuildContext context, Map<String, dynamic> data) {
+  Map<String, String> _asObj(dynamic v) {
+    if (v is Map) {
+      return v.map((k, val) => MapEntry(k.toString(), val?.toString() ?? ''));
+    }
+    final s = v?.toString() ?? '';
+    if (s.trim().startsWith('{')) {
+      final obj = ApiService.parseJsonMap(s);
+      if (obj != null && obj.isNotEmpty) {
+        return obj.map((k, val) => MapEntry(k.toString(), val?.toString() ?? ''));
+      }
+      String? rx(String key) {
+        final re = RegExp('"$key"\\s*:\\s*"([^"]*)"');
+        final m = re.firstMatch(s);
+        return m != null ? m.group(1) : null;
+      }
+      final ru = rx('ru'), uz = rx('uz'), en = rx('en');
+      return {
+        if (ru != null) 'ru': ru,
+        if (uz != null) 'uz': uz,
+        if (en != null) 'en': en,
+      };
+    }
+    return {'en': s};
+  }
+
+  String _textOf(dynamic v, String lang) {
+    final o = _asObj(v);
+    return o[lang] ?? o['en'] ?? o['ru'] ?? v?.toString() ?? '';
+  }
+
+  Widget _locationCard(BuildContext context, Map<String, dynamic> data, String lang) {
     const redColor = Color(0xFFE53935);
 
     return Container(
@@ -77,7 +112,7 @@ class LocationsPage extends StatelessWidget {
         children: [
           // NAME
           Text(
-            data['name'],
+            _textOf(data['name'], lang),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -86,10 +121,11 @@ class LocationsPage extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          _infoRow(Icons.location_on_outlined, data['address']),
-          _infoRow(Icons.location_city_outlined, data['city']),
-          _infoRow(Icons.phone_outlined, data['phone']),
-          _infoRow(Icons.credit_card_outlined, data['card_number']),
+          _infoRow(Icons.location_on_outlined, (data['address'] ?? '').toString()),
+          _infoRow(Icons.location_city_outlined, _textOf(data['city'], lang)),
+          _infoRow(Icons.phone_outlined, (data['phone'] ?? '').toString()),
+          if ((data['card_number'] ?? '').toString().isNotEmpty)
+            _infoRow(Icons.credit_card_outlined, (data['card_number'] ?? '').toString()),
 
           const SizedBox(height: 14),
 
@@ -97,7 +133,7 @@ class LocationsPage extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _callPhone(data['phone']),
+              onPressed: () => _callPhone((data['phone'] ?? '').toString()),
               icon: const Icon(Icons.call, color: Colors.white),
               label: Text(tr(context, 'call'), style: const TextStyle(color: Colors.white)),
               style: ElevatedButton.styleFrom(

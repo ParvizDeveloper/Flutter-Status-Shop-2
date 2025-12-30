@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../pages/order_page.dart';
 import '../providers/cart_provider.dart';
+import '../base/cart_storage.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -43,11 +44,29 @@ class _CartPageState extends State<CartPage> {
     _uid = uid;
     _token = tok;
     if (mounted) setState(() {});
+    // Seed from local storage first
+    final local = await CartStorage.getCart();
+    if (local.isNotEmpty && mounted) {
+      context.read<CartProvider>().seedFromBackend(local);
+    }
     if (uid != null && tok != null) {
       final docs = await ApiService.getCart(uid);
       final items = docs.map((d) => d['data'] as Map<String, dynamic>).toList();
       if (mounted) {
-        context.read<CartProvider>().seedFromBackend(items);
+        if (items.isEmpty) {
+          // Server empty: push local items up
+          for (final it in local) {
+            try { await ApiService.addCartItem(uid, it); } catch (_) {}
+          }
+          context.read<CartProvider>().seedFromBackend(local);
+        } else {
+          // Merge by tag
+          final merged = <String, Map<String, dynamic>>{};
+          for (final it in local) { merged[it['tag']] = it; }
+          for (final it in items) { merged[it['tag']] = it; }
+          final mergedList = merged.values.toList();
+          context.read<CartProvider>().seedFromBackend(mergedList);
+        }
       }
     }
   }
@@ -56,7 +75,16 @@ class _CartPageState extends State<CartPage> {
     if (_uid != null) {
       final docs = await ApiService.getCart(_uid!);
       final items = docs.map((d) => d['data'] as Map<String, dynamic>).toList();
-      context.read<CartProvider>().seedFromBackend(items);
+      if (items.isEmpty) {
+        final local = await CartStorage.getCart();
+        context.read<CartProvider>().seedFromBackend(local);
+      } else {
+        final local = await CartStorage.getCart();
+        final merged = <String, Map<String, dynamic>>{};
+        for (final it in local) { merged[it['tag']] = it; }
+        for (final it in items) { merged[it['tag']] = it; }
+        context.read<CartProvider>().seedFromBackend(merged.values.toList());
+      }
     }
   }
 

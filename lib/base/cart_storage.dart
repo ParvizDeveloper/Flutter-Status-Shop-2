@@ -11,6 +11,11 @@ class CartStorage {
     await prefs.setString(_cartKey, jsonEncode(cart));
   }
 
+  static Future<void> setCart(List<Map<String, dynamic>> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cartKey, jsonEncode(items));
+  }
+
   static Future<List<Map<String, dynamic>>> getCart() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_cartKey);

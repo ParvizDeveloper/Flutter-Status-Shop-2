@@ -18,19 +18,45 @@ class _ProductPageState extends State<ProductPage> {
   double _meters = 1.0;
   int _quantity = 1;
   String? _selectedSize;
-  int _selectedColorIndex = 0;
   final _controller = TextEditingController(text: '1');
+  String get lang =>
+      Provider.of<LanguageProvider>(context, listen: false).localeCode;
+  Map<String, String> _asObj(dynamic v) {
+    if (v is Map) {
+      return v.map((k, val) => MapEntry(k.toString(), val?.toString() ?? ''));
+    }
+    if (v is String && v.trim().startsWith('{')) {
+      try {
+        final obj = Map<String, dynamic>.from(ApiService.parseJsonMap(v) ?? {});
+        if (obj.isNotEmpty) {
+          return obj.map((k, val) => MapEntry(k.toString(), val?.toString() ?? ''));
+        }
+      } catch (_) {}
+    }
+    return {'en': v?.toString() ?? ''};
+  }
 
   // -------------------------
   // Get selected language
   // -------------------------
-  String get lang =>
-      Provider.of<LanguageProvider>(context, listen: true).localeCode;
 
   // Localized name and description
-  String pName() => widget.product['name'][lang] ?? widget.product['name']['ru'];
-  String pDesc() =>
-      widget.product['description'][lang] ?? widget.product['description']['ru'];
+  String pName() {
+    final obj = _asObj(widget.product['name']);
+    return obj[lang] ?? obj['en'] ?? obj['ru'] ?? '';
+  }
+  String pDesc() {
+    final obj = _asObj(widget.product['description']);
+    return obj[lang] ?? obj['en'] ?? obj['ru'] ?? '';
+  }
+  String pType() {
+    final obj = _asObj(widget.product['type']);
+    return obj[lang] ?? obj['en'] ?? obj['ru'] ?? '';
+  }
+  String pColor() {
+    final obj = _asObj(widget.product['color']);
+    return obj[lang] ?? obj['en'] ?? obj['ru'] ?? '';
+  }
 
   String tr(String ru, String uz, String en) {
     if (lang == 'ru') return ru;
@@ -49,7 +75,7 @@ class _ProductPageState extends State<ProductPage> {
         ? price.toDouble()
         : double.tryParse(price.toString().replaceAll(' ', '')) ?? 0;
 
-    if (widget.product['type'] == 'vinil') {
+    if (pType().toLowerCase() == 'vinil') {
       return basePrice * _meters;
     } else {
       return basePrice * _quantity;
@@ -61,8 +87,8 @@ class _ProductPageState extends State<ProductPage> {
     final product = widget.product;
     const redColor = Color(0xFFE53935);
 
-    final List<String> images = List<String>.from(product['images'] ?? []);
-    final type = product['type'];
+    final String imageUrl = (product['image'] ?? '').toString();
+    final type = pType();
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -99,9 +125,11 @@ class _ProductPageState extends State<ProductPage> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        images[_selectedColorIndex],
-                        fit: BoxFit.contain, // 🔥 картинка не обрезается
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            const Icon(Icons.image_not_supported),
                       ),
                     ),
                   );
@@ -110,53 +138,14 @@ class _ProductPageState extends State<ProductPage> {
             ),
             const SizedBox(height: 20),
 
-            /// COLORS
-            if (images.length > 1) ...[
-              Text(
-                tr("Выберите цвет:", "Rangni tanlang:", "Choose color:"),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-
-              SizedBox(
-                height: 90,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: images.length,
-                  itemBuilder: (context, index) {
-                    final isSelected = index == _selectedColorIndex;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedColorIndex = index),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: isSelected ? Colors.redAccent : Colors.grey.shade300,
-                            width: isSelected ? 2.5 : 1.5,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.asset(
-                            images[index],
-                            height: 70,
-                            width: 70,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
+            /// COLORS (skip for DB single image; future: use color swatches)
 
             /// METERS / QUANTITY / SIZE
-            if (type == 'vinil') _buildMetersInput(),
-            if (type == 'clothes' || type == 'oversize') _buildClothesInput(type),
-            if (type == 'equipment' || type == 'dtf' || type == 'cups')
+            if (type.toLowerCase() == 'vinil') 
+              _buildMetersInput()
+            else if (type.toLowerCase() == 'clothes' || type.toLowerCase() == 'oversize') 
+              _buildClothesInput(type)
+            else 
               _buildQuantityInput(),
 
             const SizedBox(height: 20),
@@ -168,6 +157,10 @@ class _ProductPageState extends State<ProductPage> {
             /// DESCRIPTION
             _buildDescription(pDesc()),
             const SizedBox(height: 20),
+
+            /// DETAILS
+            _buildDetails(type, pColor(), (widget.product['tag'] ?? '').toString()),
+            const SizedBox(height: 16),
 
             /// TOTAL
             _buildTotal(redColor),
@@ -266,6 +259,33 @@ class _ProductPageState extends State<ProductPage> {
           const SizedBox(height: 8),
 
           Text(desc, style: const TextStyle(fontSize: 14, height: 1.5)),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------
+  // DETAILS BLOCK (Type, Color, Tag)
+  // ---------------------------------------
+  Widget _buildDetails(String type, String color, String tag) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white, borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr("Характеристики товара", "Mahsulot maʼlumotlari", "Product details"),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          Text("${tr('Тип', 'Turi', 'Type')}: $type"),
+          Text("${tr('Цвет', 'Rang', 'Color')}: $color"),
+          Text("Tag: $tag"),
+          if ((widget.product['amount'] ?? 0).toString().isNotEmpty) 
+            Text("${tr('В наличии', 'Mavjud', 'In stock')}: ${(widget.product['amount'] ?? 0)}"),
         ],
       ),
     );
@@ -423,7 +443,7 @@ class _ProductPageState extends State<ProductPage> {
   // ---------------------------------------
 // ADD TO CART BUTTON — with color support
 // ---------------------------------------
-Widget _buildAddToCartButton(Color redColor, Map<String, dynamic> product) {
+  Widget _buildAddToCartButton(Color redColor, Map<String, dynamic> product) {
   return SizedBox(
     width: double.infinity,
 
@@ -460,25 +480,27 @@ Widget _buildAddToCartButton(Color redColor, Map<String, dynamic> product) {
         }
 
         final itemId =
-            '${product['type']}_${DateTime.now().millisecondsSinceEpoch}';
+            '${pType()}_${DateTime.now().millisecondsSinceEpoch}';
 
-        // 🔥 Получаем название цвета по имени файла
+        // Цвет: берем строку из product['color'] с учетом языка
         String colorName = "";
-        try {
-          final path = product['images'][_selectedColorIndex];
-          colorName = path.split('/').last.split('.').first; // PU 1
-        } catch (_) {}
+        final col = product['color'];
+        if (col is Map) {
+          colorName = col[lang] ?? col['en'] ?? col['ru'] ?? '';
+        } else {
+          colorName = col?.toString() ?? '';
+        }
 
         // 🔥 Сохраняем полный набор данных
         final item = {
           'name': product['name'],          // Map: ru/uz/en
           'description': product['description'], 
           'type': product['type'],
-          'image': product['images'][_selectedColorIndex],
-          'color': colorName,               // <- 🔥 цвет
+          'image': product['image'],
+          'color': colorName,
           'price': product['price'],
           'quantity': _quantity,
-          'meters': product['type'] == 'vinil' ? _meters : 0,
+          'meters': pType().toLowerCase() == 'vinil' ? _meters : 0,
           'size': _selectedSize ?? '',
           'total': totalPrice,
           'tag': itemId,

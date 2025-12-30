@@ -254,11 +254,13 @@ class MyOrdersPage extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              item["image"],
+            child: Image.network(
+              (item["image"] ?? '').toString(),
               width: 55,
               height: 55,
               fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.image_not_supported, size: 40),
             ),
           ),
           const SizedBox(width: 10),

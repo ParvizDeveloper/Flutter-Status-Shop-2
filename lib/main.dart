@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import 'providers/language_provider.dart';
 import 'providers/cart_provider.dart';
+import 'base/cart_storage.dart';
 
 import 'components/login.dart';
 import 'components/registration.dart';
@@ -23,12 +24,20 @@ void main() async {
 
   final langProvider = LanguageProvider();
   await langProvider.loadLocale();
+  final cartProvider = CartProvider();
+  // seed cart from local storage at app start
+  try {
+    final localCart = await CartStorage.getCart();
+    if (localCart.isNotEmpty) {
+      cartProvider.seedFromBackend(localCart);
+    }
+  } catch (_) {}
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: langProvider),
-        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider.value(value: cartProvider),
       ],
       child: const StatusShopApp(),
     ),

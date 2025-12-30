@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../base/cart_storage.dart';
 
 class CartProvider extends ChangeNotifier {
   final List<Map<String, dynamic>> _items = [];
@@ -9,11 +10,13 @@ class CartProvider extends ChangeNotifier {
       ..clear()
       ..addAll(items);
     notifyListeners();
+    CartStorage.setCart(_items);
   }
 
   void addItem(Map<String, dynamic> item) {
     _items.add(item);
     notifyListeners();
+    CartStorage.addToCart(item);
   }
 
   Map<String, dynamic>? removeByTag(String tag) {
@@ -21,6 +24,7 @@ class CartProvider extends ChangeNotifier {
     if (idx >= 0) {
       final removed = _items.removeAt(idx);
       notifyListeners();
+      CartStorage.removeFromCart(tag);
       return removed;
     }
     return null;
@@ -29,5 +33,6 @@ class CartProvider extends ChangeNotifier {
   void clear() {
     _items.clear();
     notifyListeners();
+    CartStorage.clearCart();
   }
 }

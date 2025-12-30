@@ -8,6 +8,15 @@ class ApiService {
     defaultValue:
         'https://status-shop-backend-production.up.railway.app/api/v1',
   );
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://vnneyvwkphempiqrvmhs.supabase.co',
+  );
+  static const String supabaseAnon = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZubmV5dndrcGhlbXBpcXJ2bWhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYyNjE2MDEsImV4cCI6MjA4MTgzNzYwMX0.0DVr12oxR4wzgsFHfM-5w6I_BZ1-glWVukB3BxvWLxA',
+  );
 
   // ================= STORAGE =================
 
@@ -48,6 +57,14 @@ class ApiService {
       return list.cast<Map<String, dynamic>>();
     } catch (_) {
       return [];
+    }
+  }
+  // Public helper for other modules
+  static Map<String, dynamic>? parseJsonMap(String body) {
+    try {
+      return jsonDecode(body) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -329,6 +346,72 @@ class ApiService {
       return _safeJsonMap(res.body);
     } catch (_) {
       return null;
+    }
+  }
+
+  // ================= PRODUCTS =================
+  static Future<List<Map<String, dynamic>>> getProducts({
+    int page = 1,
+    int limit = 50,
+    String sort = 'created_at',
+    String order = 'desc',
+  }) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/products?page=$page&limit=$limit&sort=$sort&order=$order'),
+        headers: {'Content-Type': 'application/json'},
+      );
+      if (!_isSuccess(res.statusCode)) return [];
+      return _safeJsonList(res.body);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ================= BRANCHES =================
+  static Future<List<Map<String, dynamic>>> getBranches() async {
+    try {
+      final t = await token() ?? '';
+      final res = await http.get(
+        Uri.parse('$baseUrl/branches'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (t.isNotEmpty) 'Authorization': 'Bearer $t',
+        },
+      );
+      // debug logging
+      // ignore: avoid_print
+      print('BRANCHES RESPONSE STATUS: ${res.statusCode}');
+      // ignore: avoid_print
+      print('BRANCHES BODY: ${res.body}');
+      if (_isSuccess(res.statusCode)) {
+        // try parse list
+        final list = _safeJsonList(res.body);
+        if (list.isNotEmpty) return list;
+        // fallback if body is { data: [...] }
+        final map = parseJsonMap(res.body);
+        final data = (map != null && map['data'] is List)
+            ? List<Map<String, dynamic>>.from(map['data'])
+            : <Map<String, dynamic>>[];
+        if (data.isNotEmpty) return data;
+      }
+      // Fallback to Supabase REST if backend not available or empty
+      final rest = await http.get(
+        Uri.parse('$supabaseUrl/rest/v1/branches?select=name,address,city,phone,card_number'),
+        headers: {
+          'apikey': supabaseAnon,
+          'Authorization': 'Bearer $supabaseAnon',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Prefer': 'count=exact',
+        },
+      );
+      if (_isSuccess(rest.statusCode)) {
+        return _safeJsonList(rest.body);
+      }
+      return [];
+    } catch (_) {
+      return [];
     }
   }
 }
